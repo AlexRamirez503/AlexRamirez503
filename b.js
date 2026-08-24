@@ -1,11 +1,25 @@
 (function(){
-  'use strict';
-  const LIVE='https://raw.githubusercontent.com/AlexRamirez503/AlexRamirez503/main/live.js';
+'use strict';
+var base='https://raw.githubusercontent.com/AlexRamirez503/AlexRamirez503/main/live.js';
+var u=base+'?aztv='+Date.now()+'-'+Math.random().toString(36).slice(2);
+function load(){
   try{
-    const s=document.createElement('script');
-    s.src=LIVE+'?t='+Date.now();
-    s.async=false;
-    s.onerror=function(){console.error('AztvTube: no se pudo cargar live.js');};
-    (document.head||document.documentElement).appendChild(s);
-  }catch(e){console.error('AztvTube remote loader failed',e);}
+    var x=new XMLHttpRequest();
+    x.open('GET',u,false);
+    x.setRequestHeader('Cache-Control','no-cache, no-store, max-age=0');
+    x.setRequestHeader('Pragma','no-cache');
+    x.send(null);
+    if((x.status>=200&&x.status<300)||x.status===0){
+      (0,eval)(x.responseText+'\n//# sourceURL=aztvtube-live.js');
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+if(!load()){
+  var s=document.createElement('script');
+  s.src=u;
+  s.async=false;
+  (document.head||document.documentElement).appendChild(s);
+}
 })();
