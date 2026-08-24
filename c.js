@@ -7,7 +7,7 @@ function banner(){
   try{
     var d=document.createElement('div');
     d.id='aztv-remote-ok';
-    d.textContent='AZTV REMOTO OK';
+    d.textContent='AZTV REMOTO ACTIVO 2';
     d.style.cssText='position:fixed;top:24px;right:24px;z-index:2147483647;background:#111;color:#fff;border:2px solid #e53935;border-radius:10px;padding:14px 20px;font-size:24px;font-weight:700;font-family:sans-serif;';
     (document.body||document.documentElement).appendChild(d);
     setTimeout(function(){try{d.remove();}catch(e){}},3000);
