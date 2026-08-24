@@ -3,25 +3,21 @@
   const ORIGINAL='https://cdn.jsdelivr.net/npm/@00sanoj00/rtxtube@1.3.3/dist/userScript.js';
   const re=/TizenTube/g;
 
-  // IMPORTANT: Do not patch JSON.parse, resolveCommand, network data, or player data.
-  // YouTube TV shares those paths and broad interception can prevent it from loading.
-  function patchVisibleSettingsText(root){
+  function patchVisibleText(root){
     try{
       root=root||document.body;
       if(!root)return;
       const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
       let n;
       while((n=walker.nextNode())){
-        const value=n.nodeValue;
-        if(!value||value.indexOf('TizenTube')<0)continue;
-        // Only alter visible branding strings. Internal identifiers remain untouched.
-        n.nodeValue=value.replace(re,'AztvTube');
+        const v=n.nodeValue;
+        if(v&&v.indexOf('TizenTube')>=0)n.nodeValue=v.replace(re,'AztvTube');
       }
     }catch(e){}
   }
 
   function startBrandObserver(){
-    patchVisibleSettingsText(document.body);
+    patchVisibleText(document.body);
     if(!document.body)return;
     const observer=new MutationObserver(function(mutations){
       for(const m of mutations){
@@ -33,7 +29,7 @@
             if(node.nodeType===Node.TEXT_NODE){
               if(node.nodeValue&&node.nodeValue.indexOf('TizenTube')>=0)node.nodeValue=node.nodeValue.replace(re,'AztvTube');
             }else if(node.nodeType===Node.ELEMENT_NODE){
-              patchVisibleSettingsText(node);
+              patchVisibleText(node);
             }
           }
         }
@@ -42,12 +38,31 @@
     observer.observe(document.body,{subtree:true,childList:true,characterData:true});
   }
 
-  const s=document.createElement('script');
-  s.src=ORIGINAL+'?aztv-safe='+Date.now();
-  s.onload=function(){
-    if(document.body)startBrandObserver();
-    else addEventListener('DOMContentLoaded',startBrandObserver,{once:true});
-  };
-  s.onerror=function(){console.error('AztvTube: failed to load original rtxtube script');};
-  (document.head||document.documentElement).appendChild(s);
+  // Load the original script immediately in this same execution path.
+  // This avoids the timing change caused by appending a second async <script> element.
+  let loaded=false;
+  try{
+    const xhr=new XMLHttpRequest();
+    xhr.open('GET',ORIGINAL+'?aztv-sync='+Date.now(),false);
+    xhr.send(null);
+    if((xhr.status>=200&&xhr.status<300)||xhr.status===0){
+      (0,eval)(xhr.responseText+'\n//# sourceURL=rtxtube-original.js');
+      loaded=true;
+    }
+  }catch(e){console.warn('AztvTube sync load failed',e);}
+
+  if(!loaded){
+    const s=document.createElement('script');
+    s.src=ORIGINAL+'?aztv-fallback='+Date.now();
+    s.onload=function(){
+      if(document.body)startBrandObserver();
+      else addEventListener('DOMContentLoaded',startBrandObserver,{once:true});
+    };
+    s.onerror=function(){console.error('AztvTube: failed to load original rtxtube script');};
+    (document.head||document.documentElement).appendChild(s);
+    return;
+  }
+
+  if(document.body)startBrandObserver();
+  else addEventListener('DOMContentLoaded',startBrandObserver,{once:true});
 })();
