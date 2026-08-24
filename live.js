@@ -1,6 +1,5 @@
 (function(){
   'use strict';
-  const ORIGINAL='https://cdn.jsdelivr.net/npm/@00sanoj00/rtxtube@1.3.3/dist/userScript.js';
   const CINEMA_KEY='aztvtube-cinema-mode';
   const BRAND=/TizenTube/g;
   let hideTimer=null;
@@ -49,7 +48,6 @@
     }catch(e){}
   }
 
-  function text(el){return (el&&el.textContent||'').trim();}
   function findCodecTextNode(){
     if(!document.body)return null;
     const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
@@ -62,11 +60,10 @@
 
   function chooseRow(node){
     let el=node&&node.parentElement;
-    for(let i=0;i<7&&el&&el!==document.body;i++,el=el.parentElement){
+    for(let i=0;i<8&&el&&el!==document.body;i++,el=el.parentElement){
       const r=el.getBoundingClientRect?el.getBoundingClientRect():null;
-      const focusable=el.hasAttribute('tabindex')||el.getAttribute('role')==='button'||el.tagName.includes('ITEM')||el.tagName.includes('LINK');
       const siblingish=el.parentElement&&el.parentElement.children&&el.parentElement.children.length>=3;
-      if(r&&r.height>=35&&r.height<=180&&(focusable||siblingish))return el;
+      if(r&&r.height>=35&&r.height<=180&&siblingish)return el;
     }
     return node&&node.parentElement;
   }
@@ -75,18 +72,24 @@
     try{if(el.id)el.removeAttribute('id');el.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));}catch(e){}
   }
 
+  function rowTextNodes(row){
+    const arr=[];const w=document.createTreeWalker(row,NodeFilter.SHOW_TEXT);let n;
+    while((n=w.nextNode()))if((n.nodeValue||'').trim())arr.push(n);
+    return arr;
+  }
+
   function rewriteClone(clone){
-    const nodes=[];const w=document.createTreeWalker(clone,NodeFilter.SHOW_TEXT);let n;
-    while((n=w.nextNode()))if((n.nodeValue||'').trim())nodes.push(n);
-    if(nodes.length){nodes[0].nodeValue='Modo Cine';if(nodes[1])nodes[1].nodeValue=cinemaOn()?'Activado':'Desactivado';}
+    const nodes=rowTextNodes(clone);
+    if(nodes[0])nodes[0].nodeValue='Modo Cine';
+    if(nodes[1])nodes[1].nodeValue=cinemaOn()?'Activado':'Desactivado';
+    for(let i=2;i<nodes.length;i++)nodes[i].nodeValue='';
     clone.setAttribute('data-aztv-cinema-row','1');
     clone.setAttribute('aria-label','Modo Cine '+(cinemaOn()?'Activado':'Desactivado'));
   }
 
   function refreshCinemaRow(){
     document.querySelectorAll('[data-aztv-cinema-row="1"]').forEach(row=>{
-      const w=document.createTreeWalker(row,NodeFilter.SHOW_TEXT);let n;const nodes=[];
-      while((n=w.nextNode()))if((n.nodeValue||'').trim())nodes.push(n);
+      const nodes=rowTextNodes(row);
       if(nodes[0])nodes[0].nodeValue='Modo Cine';
       if(nodes[1])nodes[1].nodeValue=cinemaOn()?'Activado':'Desactivado';
       row.setAttribute('aria-label','Modo Cine '+(cinemaOn()?'Activado':'Desactivado'));
@@ -115,14 +118,15 @@
     ['keydown','keyup','click','mousemove','pointermove'].forEach(ev=>addEventListener(ev,showControls,true));
     setInterval(()=>{
       const v=document.querySelector('video');
-      if(v&&!v.__aztvCinemaBound){v.__aztvCinemaBound=true;v.addEventListener('play',showControls);v.addEventListener('pause',()=>document.documentElement.classList.remove('aztv-hide-controls'));}
+      if(v&&!v.__aztvCinemaBound){
+        v.__aztvCinemaBound=true;
+        v.addEventListener('play',showControls);
+        v.addEventListener('pause',()=>document.documentElement.classList.remove('aztv-hide-controls'));
+      }
       injectCinemaRow();
     },1000);
   }
 
-  const s=document.createElement('script');
-  s.src=ORIGINAL+'?aztv='+Date.now();
-  s.onload=()=>{if(document.body)initEnhancements();else addEventListener('DOMContentLoaded',initEnhancements,{once:true});};
-  s.onerror=()=>console.error('AztvTube: no se pudo cargar el script original');
-  (document.head||document.documentElement).appendChild(s);
+  if(document.body)initEnhancements();
+  else addEventListener('DOMContentLoaded',initEnhancements,{once:true});
 })();
