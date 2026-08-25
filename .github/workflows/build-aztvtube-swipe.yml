@@ -1,11 +1,10 @@
-name: Build AztvTube ARM64 Swipe
+name: Build AztvTube ARM64 Swipe Native
 
 on:
   push:
     paths:
       - '.github/workflows/build-aztvtube-swipe.yml'
       - 'build-assets/touch_patch.smali'
-      - 't.js'
   workflow_dispatch:
 
 permissions:
@@ -35,29 +34,15 @@ jobs:
           if ! grep -q '^\.method public onTouchEvent(Landroid/view/MotionEvent;)Z' "$FILE"; then
             cat build-assets/touch_patch.smali >> "$FILE"
           fi
-      - name: Route user script to AztvTube swipe script
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('decoded/lib/arm64-v8a/libchrobalt.so')
-          b=p.read_bytes()
-          old=b'https://cdn.jsdelivr.net/npm/@foxreis/tizentube/dist/userScript.js?v='
-          new=b'https://cdn.jsdelivr.net/gh/AlexRamirez503/AlexRamirez503/t.js?'
-          if old not in b:
-              raise SystemExit('Original userScript URL not found')
-          rep=new+b'\0'*(len(old)-len(new))
-          p.write_bytes(b.replace(old,rep,1))
-          PY
+      - name: Keep original TizenTube server and script
+        run: echo 'Original libchrobalt URLs remain untouched'
       - name: Phone fullscreen landscape
         shell: bash
         run: |
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
-          p='decoded/AndroidManifest.xml'
-          ns='http://schemas.android.com/apk/res/android'
-          ET.register_namespace('android',ns)
-          t=ET.parse(p); r=t.getroot()
+          p='decoded/AndroidManifest.xml'; ns='http://schemas.android.com/apk/res/android'
+          ET.register_namespace('android',ns); t=ET.parse(p); r=t.getroot()
           for a in r.findall('.//activity'):
               n=a.get('{%s}name'%ns,'')
               if 'MainActivity' in n or 'CobaltActivity' in n:
@@ -76,9 +61,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           keytool -genkeypair -noprompt -keystore swipe.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
           "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
-          "$APKSIGNER" sign --ks swipe.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_SWIPE.apk aligned.apk
-          "$APKSIGNER" verify --verbose AztvTube_ARM64_TOUCH_SWIPE.apk
+          "$APKSIGNER" sign --ks swipe.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_NATIVE.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_TOUCH_NATIVE.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AztvTube_ARM64_TOUCH_SWIPE
-          path: AztvTube_ARM64_TOUCH_SWIPE.apk
+          name: AztvTube_ARM64_TOUCH_NATIVE
+          path: AztvTube_ARM64_TOUCH_NATIVE.apk
