@@ -81,13 +81,13 @@
     if-lez v0, :horizontal
     const/4 v0, 0x0
     cmpg-float v0, v5, v0
-    if-gez v0, :swipe_down
-    const/16 v0, 0x13    # KEYCODE_DPAD_UP (swipe down)
+    if-gez v0, :finger_down
+    const/16 v0, 0x14    # finger up -> DPAD_DOWN so content follows finger upward
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
-:swipe_down
-    const/16 v0, 0x14    # KEYCODE_DPAD_DOWN (swipe up)
+:finger_down
+    const/16 v0, 0x13    # finger down -> DPAD_UP so content follows finger downward
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
@@ -95,13 +95,13 @@
 :horizontal
     const/4 v0, 0x0
     cmpg-float v0, v4, v0
-    if-gez v0, :swipe_right
-    const/16 v0, 0x15    # KEYCODE_DPAD_LEFT (swipe right)
+    if-gez v0, :finger_right
+    const/16 v0, 0x16    # finger left -> DPAD_RIGHT so content follows finger left
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
-:swipe_right
-    const/16 v0, 0x16    # KEYCODE_DPAD_RIGHT (swipe left)
+:finger_right
+    const/16 v0, 0x15    # finger right -> DPAD_LEFT so content follows finger right
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
