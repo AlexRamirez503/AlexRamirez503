@@ -30,6 +30,22 @@ jobs:
           test -n "$FILE"
           echo 'Ci5tZXRob2QgcHJpdmF0ZSBnZXRFdmVudEZvcndhcmRlcigpTG9yZy9jaHJvbWl1bS91aS9iYXNlL0V2ZW50Rm9yd2FyZGVyOwogICAgLmxvY2FscyAxCgogICAgaWdldC1vYmplY3QgdjAsIHAwLCBMZGV2L2NvYmFsdC9zaGVsbC9Db250ZW50Vmlld1JlbmRlclZpZXc7LT5tV2ViQ29udGVudHM6TG9yZy9jaHJvbWl1bS9jb250ZW50X3B1YmxpYy9icm93c2VyL1dlYkNvbnRlbnRzOwoKICAgIGlmLWVxeiB2MCwgOnJldHVybl9udWxsCgogICAgaW52b2tlLWludGVyZmFjZSB7djB9LCBMb3JnL2Nocm9taXVtL2NvbnRlbnRfcHVibGljL2Jyb3dzZXIvV2ViQ29udGVudHM7LT5pc0Rlc3Ryb3llZCgpWgogICAgbW92ZS1yZXN1bHQgdjAKCiAgICBpZi1lcXogdjAsIDpnZXRfZm9yd2FyZGVyCgo6cmV0dXJuX251bGwKICAgIGNvbnN0LzQgdjAsIDB4MAogICAgcmV0dXJuLW9iamVjdCB2MAoKOmdldF9mb3J3YXJkZXIKICAgIGlnZXQtb2JqZWN0IHYwLCBwMCwgTGRldi9jb2JhbHQvc2hlbGwvQ29udGVudFZpZXdSZW5kZXJWaWV3Oy0+bVdlYkNvbnRlbnRzOkxvcmcvY2hyb21pdW0vY29udGVudF9wdWJsaWMvYnJvd3Nlci9XZWJDb250ZW50czsKICAgIGludm9rZS1pbnRlcmZhY2Uge3YwfSwgTG9yZy9jaHJvbWl1bS9jb250ZW50X3B1YmxpYy9icm93c2VyL1dlYkNvbnRlbnRzOy0+Z2V0RXZlbnRGb3J3YXJkZXIoKUxvcmcvY2hyb21pdW0vdWkvYmFzZS9FdmVudEZvcndhcmRlcjsKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAogICAgcmV0dXJuLW9iamVjdCB2MAouZW5kIG1ldGhvZAoKLm1ldGhvZCBwdWJsaWMgb25Ub3VjaEV2ZW50KExhbmRyb2lkL3ZpZXcvTW90aW9uRXZlbnQ7KVoKICAgIC5sb2NhbHMgMQoKICAgIGludm9rZS1kaXJlY3Qge3AwfSwgTGRldi9jb2JhbHQvc2hlbGwvQ29udGVudFZpZXdSZW5kZXJWaWV3Oy0+Z2V0RXZlbnRGb3J3YXJkZXIoKUxvcmcvY2hyb21pdW0vdWkvYmFzZS9FdmVudEZvcndhcmRlcjsKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAoKICAgIGlmLWVxeiB2MCwgOmNhbGxfc3VwZXIKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHAxfSwgTG9yZy9jaHJvbWl1bS91aS9iYXNlL0V2ZW50Rm9yd2FyZGVyOy0+b25Ub3VjaEV2ZW50KExhbmRyb2lkL3ZpZXcvTW90aW9uRXZlbnQ7KVoKICAgIG1vdmUtcmVzdWx0IHYwCiAgICByZXR1cm4gdjAKCjpjYWxsX3N1cGVyCiAgICBpbnZva2Utc3VwZXIge3AwLCBwMX0sIExhbmRyb2lkL3dpZGdldC9GcmFtZUxheW91dDstPm9uVG91Y2hFdmVudChMYW5kcm9pZC92aWV3L01vdGlvbkV2ZW50OylaCiAgICBtb3ZlLXJlc3VsdCB2MAogICAgcmV0dXJuIHYwCi5lbmQgbWV0aG9kCg==' | base64 -d >> "$FILE"
           grep -q 'onTouchEvent(Landroid/view/MotionEvent;)Z' "$FILE"
+      - name: Phone fullscreen landscape
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          p='decoded/AndroidManifest.xml'
+          ns='http://schemas.android.com/apk/res/android'
+          ET.register_namespace('android',ns)
+          t=ET.parse(p); r=t.getroot()
+          for a in r.findall('.//activity'):
+              n=a.get('{%s}name'%ns,'')
+              if 'MainActivity' in n or 'CobaltActivity' in n:
+                  a.set('{%s}screenOrientation'%ns,'sensorLandscape')
+                  a.set('{%s}resizeableActivity'%ns,'true')
+          t.write(p,encoding='utf-8',xml_declaration=True)
+          PY
       - name: Rename visible label
         run: find decoded/res -type f -name '*.xml' -print0 | xargs -0 sed -i 's/TizenTube/AztvTube/g' || true
       - name: Build
@@ -41,9 +57,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           keytool -genkeypair -noprompt -keystore touch.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
           "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
-          "$APKSIGNER" sign --ks touch.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_NATIVE.apk aligned.apk
-          "$APKSIGNER" verify --verbose AztvTube_ARM64_TOUCH_NATIVE.apk
+          "$APKSIGNER" sign --ks touch.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_FULLSCREEN.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_TOUCH_FULLSCREEN.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AztvTube_ARM64_TOUCH_NATIVE
-          path: AztvTube_ARM64_TOUCH_NATIVE.apk
+          name: AztvTube_ARM64_TOUCH_FULLSCREEN
+          path: AztvTube_ARM64_TOUCH_FULLSCREEN.apk
