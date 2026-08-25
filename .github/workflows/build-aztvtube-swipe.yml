@@ -26,7 +26,7 @@ jobs:
           curl -L --fail -o cobalt-arm64.apk https://github.com/reisxd/TizenTubeCobalt/releases/download/v2.0.2/cobalt-arm64.apk
       - name: Decode
         run: java -jar apktool.jar d -f cobalt-arm64.apk -o decoded
-      - name: Add native touch and swipe navigation
+      - name: Add native touch swipe and seek gestures
         shell: bash
         run: |
           FILE=$(find decoded -type f -path '*dev/cobalt/shell/ContentViewRenderView.smali' | head -1)
@@ -34,20 +34,20 @@ jobs:
           python3 - "$FILE" <<'PY'
           from pathlib import Path
           import sys
-          p=Path(sys.argv[1])
-          s=p.read_text()
-          fields='\n.field private mAztvTouchStartX:F\n.field private mAztvTouchStartY:F\n.field private mAztvTouchMoved:Z\n'
+          p=Path(sys.argv[1]); s=p.read_text()
+          fields='\n.field private mAztvTouchStartX:F\n.field private mAztvTouchStartY:F\n.field private mAztvTouchMoved:Z\n.field private mAztvLastTapTime:J\n'
           if 'mAztvTouchStartX:F' not in s:
               pos=s.find('\n.method ')
               if pos < 0: raise SystemExit('No method marker found')
               s=s[:pos]+fields+s[pos:]
-              p.write_text(s)
+          elif 'mAztvLastTapTime:J' not in s:
+              pos=s.find('\n.method ')
+              s=s[:pos]+'\n.field private mAztvLastTapTime:J\n'+s[pos:]
+          p.write_text(s)
           PY
-          if ! grep -q '^\.method public onTouchEvent(Landroid/view/MotionEvent;)Z' "$FILE"; then
-            cat build-assets/touch_patch.smali >> "$FILE"
-          fi
-          grep -q 'mAztvTouchStartX:F' "$FILE"
-          grep -q 'sendDpad(I)V' "$FILE"
+          cat build-assets/touch_patch.smali >> "$FILE"
+          grep -q 'mAztvLastTapTime:J' "$FILE"
+          grep -q 'seek30(I)V' "$FILE"
       - name: Keep original TizenTube server and script
         run: echo 'Original libchrobalt URLs remain untouched'
       - name: Phone fullscreen landscape
@@ -75,9 +75,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           keytool -genkeypair -noprompt -keystore swipe.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
           "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
-          "$APKSIGNER" sign --ks swipe.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_SWIPE_NATIVE.apk aligned.apk
-          "$APKSIGNER" verify --verbose AztvTube_ARM64_TOUCH_SWIPE_NATIVE.apk
+          "$APKSIGNER" sign --ks swipe.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_SEEK.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_TOUCH_SEEK.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AztvTube_ARM64_TOUCH_SWIPE_NATIVE
-          path: AztvTube_ARM64_TOUCH_SWIPE_NATIVE.apk
+          name: AztvTube_ARM64_TOUCH_SEEK
+          path: AztvTube_ARM64_TOUCH_SEEK.apk
