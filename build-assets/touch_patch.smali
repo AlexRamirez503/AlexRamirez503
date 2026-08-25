@@ -34,8 +34,21 @@
     return-void
 .end method
 
+.method private seek30(I)V
+    .locals 2
+    const/4 v0, 0x0
+:loop
+    const/4 v1, 0x3
+    if-ge v0, v1, :done
+    invoke-direct {p0, p1}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
+    add-int/lit8 v0, v0, 0x1
+    goto :loop
+:done
+    return-void
+.end method
+
 .method public onTouchEvent(Landroid/view/MotionEvent;)Z
-    .locals 8
+    .locals 10
     invoke-virtual {p1}, Landroid/view/MotionEvent;->getActionMasked()I
     move-result v0
     if-nez v0, :check_move
@@ -64,7 +77,7 @@
     move-result v6
     invoke-static {v5}, Ljava/lang/Math;->abs(F)F
     move-result v7
-    const/high16 v1, 0x42700000    # 60.0f
+    const/high16 v1, 0x42480000    # 50.0f
     cmpl-float v0, v6, v1
     if-gez v0, :do_nav
     cmpl-float v0, v7, v1
@@ -82,12 +95,12 @@
     const/4 v0, 0x0
     cmpg-float v0, v5, v0
     if-gez v0, :finger_down
-    const/16 v0, 0x14    # finger up -> DPAD_DOWN so content follows finger upward
+    const/16 v0, 0x13
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
 :finger_down
-    const/16 v0, 0x13    # finger down -> DPAD_UP so content follows finger downward
+    const/16 v0, 0x14
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
@@ -96,12 +109,12 @@
     const/4 v0, 0x0
     cmpg-float v0, v4, v0
     if-gez v0, :finger_right
-    const/16 v0, 0x16    # finger left -> DPAD_RIGHT so content follows finger left
+    const/16 v0, 0x15
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
 :finger_right
-    const/16 v0, 0x15    # finger right -> DPAD_LEFT so content follows finger right
+    const/16 v0, 0x16
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
@@ -110,7 +123,38 @@
     const/4 v1, 0x1
     if-ne v0, v1, :forward
     iget-boolean v1, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchMoved:Z
-    if-eqz v1, :forward
+    if-nez v1, :consume
+    invoke-static {}, Landroid/os/SystemClock;->uptimeMillis()J
+    move-result-wide v2
+    iget-wide v4, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvLastTapTime:J
+    sub-long v6, v2, v4
+    const-wide/16 v8, 0x15e
+    cmp-long v0, v6, v8
+    if-lez v0, :double_tap
+    iput-wide v2, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvLastTapTime:J
+    goto :forward
+:double_tap
+    const-wide/16 v4, 0x0
+    iput-wide v4, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvLastTapTime:J
+    invoke-virtual {p0}, Ldev/cobalt/shell/ContentViewRenderView;->getWidth()I
+    move-result v0
+    int-to-float v0, v0
+    const/high16 v1, 0x40000000
+    div-float/2addr v0, v1
+    invoke-virtual {p1}, Landroid/view/MotionEvent;->getX()F
+    move-result v1
+    cmpg-float v0, v1, v0
+    if-gez v0, :double_right
+    const/16 v0, 0x15
+    invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->seek30(I)V
+    const/4 v0, 0x1
+    return v0
+:double_right
+    const/16 v0, 0x16
+    invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->seek30(I)V
+    const/4 v0, 0x1
+    return v0
+:consume
     const/4 v0, 0x1
     return v0
 
