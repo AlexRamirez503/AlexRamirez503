@@ -82,14 +82,13 @@
     move-result v6
     invoke-static {v5}, Ljava/lang/Math;->abs(F)F
     move-result v7
-    const/high16 v1, 0x42480000    # 50.0f
+    const/high16 v1, 0x42480000
     cmpl-float v0, v6, v1
     if-gez v0, :do_nav
     cmpl-float v0, v7, v1
     if-gez v0, :do_nav
     const/4 v0, 0x1
     return v0
-
 :do_nav
     const/4 v0, 0x1
     iput-boolean v0, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchMoved:Z
@@ -98,30 +97,28 @@
     const/4 v0, 0x0
     cmpg-float v0, v5, v0
     if-gez v0, :finger_down
-    const/16 v0, 0x13
-    invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
-    const/4 v0, 0x1
-    return v0
-:finger_down
     const/16 v0, 0x14
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
-
+:finger_down
+    const/16 v0, 0x13
+    invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
+    const/4 v0, 0x1
+    return v0
 :horizontal
     const/4 v0, 0x0
     cmpg-float v0, v4, v0
     if-gez v0, :finger_right
-    const/16 v0, 0x15
-    invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
-    const/4 v0, 0x1
-    return v0
-:finger_right
     const/16 v0, 0x16
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
-
+:finger_right
+    const/16 v0, 0x15
+    invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
+    const/4 v0, 0x1
+    return v0
 :check_up
     const/4 v1, 0x1
     if-ne v0, v1, :forward
@@ -160,7 +157,6 @@
 :consume
     const/4 v0, 0x1
     return v0
-
 :forward
     invoke-direct {p0}, Ldev/cobalt/shell/ContentViewRenderView;->getEventForwarder()Lorg/chromium/ui/base/EventForwarder;
     move-result-object v0
