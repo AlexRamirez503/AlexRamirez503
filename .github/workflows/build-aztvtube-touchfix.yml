@@ -1,6 +1,7 @@
 name: Build AztvTube ARM64 TouchFix
 
 on:
+  push:
   pull_request:
   workflow_dispatch:
 
