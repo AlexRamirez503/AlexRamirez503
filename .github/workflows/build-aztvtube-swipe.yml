@@ -1,5 +1,4 @@
-name: Build AztvTube ARM64 Swipe Native
-
+name: Build AztvTube ARM64 Stable Touch
 on:
   push:
     paths:
@@ -18,13 +17,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Download APKTool and ARM64 base
+      - name: Download base
         run: |
           curl -L --fail -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
           curl -L --fail -o cobalt-arm64.apk https://github.com/reisxd/TizenTubeCobalt/releases/download/v2.0.2/cobalt-arm64.apk
       - name: Decode
         run: java -jar apktool.jar d -f cobalt-arm64.apk -o decoded
-      - name: Add native touch gestures
+      - name: Add stable native touch gestures
         shell: bash
         run: |
           FILE=$(find decoded -type f -path '*dev/cobalt/shell/ContentViewRenderView.smali' | head -1)
@@ -35,52 +34,21 @@ jobs:
           p=Path(sys.argv[1]); s=p.read_text()
           fields='\n.field private mAztvTouchStartX:F\n.field private mAztvTouchStartY:F\n.field private mAztvTouchMoved:Z\n.field private mAztvLastTapTime:J\n'
           if 'mAztvTouchStartX:F' not in s:
-              pos=s.find('\n.method '); s=s[:pos]+fields+s[pos:]
+              pos=s.find('\n.method ')
+              if pos < 0: raise SystemExit('No method marker')
+              s=s[:pos]+fields+s[pos:]
           p.write_text(s)
           PY
           cat build-assets/touch_patch.smali >> "$FILE"
-      - name: Keep Cobalt playback alive in background
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          # Cobalt's Activity normally forwards onPause/onStop into Starboard,
-          # which suspends media. Neutralize only those lifecycle callbacks.
-          candidates=list(Path('decoded').rglob('*.smali'))
-          changed=0
-          for p in candidates:
-              s=p.read_text(errors='ignore')
-              if 'Ldev/cobalt/' not in str(p).replace('\\','/') and 'cobalt' not in str(p).lower():
-                  continue
-              original=s
-              # Preserve Android superclass lifecycle, but remove native/Cobalt suspend calls
-              lines=s.splitlines()
-              inside=False; method=''; out=[]
-              for line in lines:
-                  st=line.strip()
-                  if st.startswith('.method') and (' onPause()V' in st or ' onStop()V' in st):
-                      inside=True; method='pause' if 'onPause' in st else 'stop'; out.append(line); continue
-                  if inside and st=='.end method':
-                      inside=False; method=''; out.append(line); continue
-                  if inside and ('native' in st.lower() or 'starboard' in st.lower() or 'cobalt' in st.lower()) and 'invoke-' in st:
-                      out.append('    # AztvTube background playback: '+st)
-                      continue
-                  out.append(line)
-              s='\n'.join(out)+'\n'
-              if s!=original:
-                  p.write_text(s); changed+=1
-          print('Lifecycle files patched:',changed)
-          PY
-      - name: Manifest background playback support
+      - name: Keep original Cobalt lifecycle and server
+        run: echo 'No lifecycle or server modifications'
+      - name: Phone landscape
         shell: bash
         run: |
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           p='decoded/AndroidManifest.xml'; ns='http://schemas.android.com/apk/res/android'
           ET.register_namespace('android',ns); t=ET.parse(p); r=t.getroot()
-          for perm in ['android.permission.WAKE_LOCK']:
-              if not any(x.get('{%s}name'%ns)==perm for x in r.findall('uses-permission')):
-                  e=ET.Element('uses-permission'); e.set('{%s}name'%ns,perm); r.insert(0,e)
           for a in r.findall('.//activity'):
               n=a.get('{%s}name'%ns,'')
               if 'MainActivity' in n or 'CobaltActivity' in n:
@@ -88,7 +56,7 @@ jobs:
                   a.set('{%s}resizeableActivity'%ns,'true')
           t.write(p,encoding='utf-8',xml_declaration=True)
           PY
-      - name: Rename visible label
+      - name: Rename label
         run: find decoded/res -type f -name '*.xml' -print0 | xargs -0 sed -i 's/TizenTube/AztvTube/g' || true
       - name: Build
         run: java -jar apktool.jar b decoded -o unsigned.apk
@@ -97,11 +65,11 @@ jobs:
         run: |
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
-          keytool -genkeypair -noprompt -keystore swipe.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
+          keytool -genkeypair -noprompt -keystore stable.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
           "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
-          "$APKSIGNER" sign --ks swipe.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_BACKGROUND.apk aligned.apk
-          "$APKSIGNER" verify --verbose AztvTube_ARM64_TOUCH_BACKGROUND.apk
+          "$APKSIGNER" sign --ks stable.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_STABLE_TOUCH.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_STABLE_TOUCH.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AztvTube_ARM64_TOUCH_BACKGROUND
-          path: AztvTube_ARM64_TOUCH_BACKGROUND.apk
+          name: AztvTube_ARM64_STABLE_TOUCH
+          path: AztvTube_ARM64_STABLE_TOUCH.apk
