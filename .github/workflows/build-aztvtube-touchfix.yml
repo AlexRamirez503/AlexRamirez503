@@ -14,107 +14,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Download APKTool and original ARM64 APK
+      - name: Download tools and APK
         run: |
           curl -L --fail -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
           curl -L --fail -o cobalt-arm64.apk https://github.com/reisxd/TizenTubeCobalt/releases/download/v2.0.2/cobalt-arm64.apk
-
-      - name: Decode APK
+      - name: Decode
         run: java -jar apktool.jar d -f cobalt-arm64.apk -o decoded
-
-      - name: Add native Android touch forwarding
+      - name: Patch Android touch forwarding
         shell: bash
         run: |
           FILE=$(find decoded -type f -path '*dev/cobalt/shell/ContentViewRenderView.smali' | head -1)
-          echo "Patching $FILE"
           test -n "$FILE"
-          if grep -q '^\.method public onTouchEvent(Landroid/view/MotionEvent;)Z' "$FILE"; then
-            echo 'Touch forwarding already present'
-          else
-            cat >> "$FILE" <<'SMALI'
-
-.method private getEventForwarder()Lorg/chromium/ui/base/EventForwarder;
-    .locals 1
-
-    iget-object v0, p0, Ldev/cobalt/shell/ContentViewRenderView;->mWebContents:Lorg/chromium/content_public/browser/WebContents;
-
-    if-eqz v0, :return_null
-
-    invoke-interface {v0}, Lorg/chromium/content_public/browser/WebContents;->isDestroyed()Z
-    move-result v0
-
-    if-eqz v0, :get_forwarder
-
-:return_null
-    const/4 v0, 0x0
-    return-object v0
-
-:get_forwarder
-    iget-object v0, p0, Ldev/cobalt/shell/ContentViewRenderView;->mWebContents:Lorg/chromium/content_public/browser/WebContents;
-    invoke-interface {v0}, Lorg/chromium/content_public/browser/WebContents;->getEventForwarder()Lorg/chromium/ui/base/EventForwarder;
-    move-result-object v0
-    return-object v0
-.end method
-
-.method public onTouchEvent(Landroid/view/MotionEvent;)Z
-    .locals 1
-
-    invoke-direct {p0}, Ldev/cobalt/shell/ContentViewRenderView;->getEventForwarder()Lorg/chromium/ui/base/EventForwarder;
-    move-result-object v0
-
-    if-eqz v0, :call_super
-
-    invoke-virtual {v0, p1}, Lorg/chromium/ui/base/EventForwarder;->onTouchEvent(Landroid/view/MotionEvent;)Z
-    move-result v0
-    return v0
-
-:call_super
-    invoke-super {p0, p1}, Landroid/widget/FrameLayout;->onTouchEvent(Landroid/view/MotionEvent;)Z
-    move-result v0
-    return v0
-.end method
-SMALI
-          fi
-
-      - name: Rename visible app label to AztvTube
-        shell: bash
-        run: |
-          find decoded/res -type f \( -name '*.xml' -o -name '*.html' \) -print0 | xargs -0 sed -i 's/TizenTube/AztvTube/g' || true
-
-      - name: Build APK
-        run: java -jar apktool.jar b decoded -o AztvTube_ARM64_TOUCH_NATIVE-unsigned.apk
-
-      - name: Locate Android build tools
-        id: tools
+          echo 'Ci5tZXRob2QgcHJpdmF0ZSBnZXRFdmVudEZvcndhcmRlcigpTG9yZy9jaHJvbWl1bS91aS9iYXNlL0V2ZW50Rm9yd2FyZGVyOwogICAgLmxvY2FscyAxCgogICAgaWdldC1vYmplY3QgdjAsIHAwLCBMZGV2L2NvYmFsdC9zaGVsbC9Db250ZW50Vmlld1JlbmRlclZpZXc7LT5tV2ViQ29udGVudHM6TG9yZy9jaHJvbWl1bS9jb250ZW50X3B1YmxpYy9icm93c2VyL1dlYkNvbnRlbnRzOwoKICAgIGlmLWVxeiB2MCwgOnJldHVybl9udWxsCgogICAgaW52b2tlLWludGVyZmFjZSB7djB9LCBMb3JnL2Nocm9taXVtL2NvbnRlbnRfcHVibGljL2Jyb3dzZXIvV2ViQ29udGVudHM7LT5pc0Rlc3Ryb3llZCgpWgogICAgbW92ZS1yZXN1bHQgdjAKCiAgICBpZi1lcXogdjAsIDpnZXRfZm9yd2FyZGVyCgo6cmV0dXJuX251bGwKICAgIGNvbnN0LzQgdjAsIDB4MAogICAgcmV0dXJuLW9iamVjdCB2MAoKOmdldF9mb3J3YXJkZXIKICAgIGlnZXQtb2JqZWN0IHYwLCBwMCwgTGRldi9jb2JhbHQvc2hlbGwvQ29udGVudFZpZXdSZW5kZXJWaWV3Oy0+bVdlYkNvbnRlbnRzOkxvcmcvY2hyb21pdW0vY29udGVudF9wdWJsaWMvYnJvd3Nlci9XZWJDb250ZW50czsKICAgIGludm9rZS1pbnRlcmZhY2Uge3YwfSwgTG9yZy9jaHJvbWl1bS9jb250ZW50X3B1YmxpYy9icm93c2VyL1dlYkNvbnRlbnRzOy0+Z2V0RXZlbnRGb3J3YXJkZXIoKUxvcmcvY2hyb21pdW0vdWkvYmFzZS9FdmVudEZvcndhcmRlcjsKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAogICAgcmV0dXJuLW9iamVjdCB2MAouZW5kIG1ldGhvZAoKLm1ldGhvZCBwdWJsaWMgb25Ub3VjaEV2ZW50KExhbmRyb2lkL3ZpZXcvTW90aW9uRXZlbnQ7KVoKICAgIC5sb2NhbHMgMQoKICAgIGludm9rZS1kaXJlY3Qge3AwfSwgTGRldi9jb2JhbHQvc2hlbGwvQ29udGVudFZpZXdSZW5kZXJWaWV3Oy0+Z2V0RXZlbnRGb3J3YXJkZXIoKUxvcmcvY2hyb21pdW0vdWkvYmFzZS9FdmVudEZvcndhcmRlcjsKICAgIG1vdmUtcmVzdWx0LW9iamVjdCB2MAoKICAgIGlmLWVxeiB2MCwgOmNhbGxfc3VwZXIKCiAgICBpbnZva2UtdmlydHVhbCB7djAsIHAxfSwgTG9yZy9jaHJvbWl1bS91aS9iYXNlL0V2ZW50Rm9yd2FyZGVyOy0+b25Ub3VjaEV2ZW50KExhbmRyb2lkL3ZpZXcvTW90aW9uRXZlbnQ7KVoKICAgIG1vdmUtcmVzdWx0IHYwCiAgICByZXR1cm4gdjAKCjpjYWxsX3N1cGVyCiAgICBpbnZva2Utc3VwZXIge3AwLCBwMX0sIExhbmRyb2lkL3dpZGdldC9GcmFtZUxheW91dDstPm9uVG91Y2hFdmVudChMYW5kcm9pZC92aWV3L01vdGlvbkV2ZW50OylaCiAgICBtb3ZlLXJlc3VsdCB2MAogICAgcmV0dXJuIHYwCi5lbmQgbWV0aG9kCg==' | base64 -d >> "$FILE"
+          grep -q 'onTouchEvent(Landroid/view/MotionEvent;)Z' "$FILE"
+      - name: Rename visible label
+        run: find decoded/res -type f -name '*.xml' -print0 | xargs -0 sed -i 's/TizenTube/AztvTube/g' || true
+      - name: Build
+        run: java -jar apktool.jar b decoded -o unsigned.apk
+      - name: Align and sign
         shell: bash
         run: |
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
-          echo "zipalign=$ZIPALIGN" >> "$GITHUB_OUTPUT"
-          echo "apksigner=$APKSIGNER" >> "$GITHUB_OUTPUT"
-          test -x "$ZIPALIGN"
-          test -x "$APKSIGNER"
-
-      - name: Align and sign
-        shell: bash
-        run: |
-          keytool -genkeypair -noprompt -keystore aztvtube-touch.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
-          '${{ steps.tools.outputs.zipalign }}' -f -p 4 AztvTube_ARM64_TOUCH_NATIVE-unsigned.apk AztvTube_ARM64_TOUCH_NATIVE-aligned.apk
-          '${{ steps.tools.outputs.apksigner }}' sign --ks aztvtube-touch.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_NATIVE.apk AztvTube_ARM64_TOUCH_NATIVE-aligned.apk
-          '${{ steps.tools.outputs.apksigner }}' verify --verbose AztvTube_ARM64_TOUCH_NATIVE.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          keytool -genkeypair -noprompt -keystore touch.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
+          "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
+          "$APKSIGNER" sign --ks touch.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_TOUCH_NATIVE.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_TOUCH_NATIVE.apk
+      - uses: actions/upload-artifact@v4
         with:
           name: AztvTube_ARM64_TOUCH_NATIVE
           path: AztvTube_ARM64_TOUCH_NATIVE.apk
-          if-no-files-found: error
