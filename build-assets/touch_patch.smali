@@ -65,6 +65,11 @@
 :check_move
     const/4 v1, 0x2
     if-ne v0, v1, :check_up
+    iget-boolean v1, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchMoved:Z
+    if-eqz v1, :measure_move
+    const/4 v0, 0x1
+    return v0
+:measure_move
     invoke-virtual {p1}, Landroid/view/MotionEvent;->getX()F
     move-result v2
     invoke-virtual {p1}, Landroid/view/MotionEvent;->getY()F
@@ -88,8 +93,6 @@
 :do_nav
     const/4 v0, 0x1
     iput-boolean v0, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchMoved:Z
-    iput v2, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchStartX:F
-    iput v3, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchStartY:F
     cmpl-float v0, v7, v6
     if-lez v0, :horizontal
     const/4 v0, 0x0
