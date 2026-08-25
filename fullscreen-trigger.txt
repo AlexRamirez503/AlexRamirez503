@@ -1,0 +1,1 @@
+Trigger AztvTube ARM64 fullscreen landscape build.
