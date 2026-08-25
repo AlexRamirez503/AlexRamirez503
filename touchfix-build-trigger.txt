@@ -1,1 +1,1 @@
-Trigger AztvTube ARM64 native touch build.
+Trigger AztvTube ARM64 native touch fullscreen build.
