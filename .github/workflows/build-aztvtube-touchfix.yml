@@ -1,9 +1,7 @@
 name: Build AztvTube ARM64 TouchFix
 
 on:
-  push:
-    paths:
-      - '.github/workflows/build-aztvtube-touchfix.yml'
+  pull_request:
   workflow_dispatch:
 
 permissions:
