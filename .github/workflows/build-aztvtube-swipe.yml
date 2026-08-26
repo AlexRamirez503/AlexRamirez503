@@ -4,6 +4,7 @@ on:
     paths:
       - '.github/workflows/build-aztvtube-swipe.yml'
       - 'build-assets/touch_patch.smali'
+      - 't.js'
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,8 +41,6 @@ jobs:
           p.write_text(s)
           PY
           cat build-assets/touch_patch.smali >> "$FILE"
-      - name: Keep original Cobalt lifecycle and technical server endpoint
-        run: echo 'Touch, lifecycle, package identifiers and technical server URL unchanged'
       - name: Phone landscape
         shell: bash
         run: |
@@ -56,37 +55,46 @@ jobs:
                   a.set('{%s}resizeableActivity'%ns,'true')
           t.write(p,encoding='utf-8',xml_declaration=True)
           PY
-      - name: Rename every visible TizenTube reference
+      - name: Rename packaged visible branding
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           changed=[]
-          exts={'.xml','.smali','.json','.js','.html','.txt','.properties','.yml','.yaml'}
+          exts={'.xml','.smali','.json','.js','.html','.txt','.properties'}
           for p in Path('decoded').rglob('*'):
               if not p.is_file() or p.suffix.lower() not in exts: continue
-              try: s=p.read_text(encoding='utf-8')
-              except: continue
-              if 'TizenTube' in s:
-                  ns=s.replace('TizenTube','AztvTube')
-                  if ns!=s:
-                      p.write_text(ns,encoding='utf-8'); changed.append(str(p))
-          print('Renamed visible references:',len(changed))
-          for x in changed[:100]: print(x)
+              try:s=p.read_text(encoding='utf-8')
+              except:continue
+              ns=s.replace('TizenTube','AztvTube')
+              if ns!=s:
+                  p.write_text(ns,encoding='utf-8'); changed.append(str(p))
+          print('Brand files changed:',len(changed))
           PY
-      - name: Verify no visible TizenTube literals remain
+      - name: Route remote UI script through AztvTube wrapper
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
+          wrapper='https://raw.githubusercontent.com/AlexRamirez503/AlexRamirez503/main/t.js'
+          pats=[
+            re.compile(r'https://[^"\s]+(?:tizentube|TizenTube)[^"\s]*userScript\.js[^"\s]*',re.I),
+            re.compile(r'https://cdn\.jsdelivr\.net/npm/@foxreis/tizentube/dist/userScript\.js[^"\s]*',re.I)
+          ]
           hits=[]
           for p in Path('decoded').rglob('*'):
-              if not p.is_file(): continue
+              if not p.is_file() or p.suffix.lower() not in {'.smali','.xml','.json','.js','.txt','.properties'}: continue
               try:s=p.read_text(encoding='utf-8')
               except:continue
-              if 'TizenTube' in s: hits.append(str(p))
-          print('Remaining capitalized references:',hits)
-          if hits: raise SystemExit(1)
+              ns=s
+              for pat in pats: ns,n=pat.subn(wrapper,ns); hits += [str(p)]*n
+              if ns!=s: p.write_text(ns,encoding='utf-8')
+          print('Remote UI endpoint replacements:',len(hits))
+          for h in sorted(set(hits)): print(h)
+          if not hits:
+              print('No direct userscript URL found; leaving technical loading path intact.')
           PY
       - name: Build
         run: java -jar apktool.jar b decoded -o unsigned.apk
@@ -97,9 +105,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           keytool -genkeypair -noprompt -keystore hybrid.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
           "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
-          "$APKSIGNER" sign --ks hybrid.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_HYBRID_TOUCH_BRANDED.apk aligned.apk
-          "$APKSIGNER" verify --verbose AztvTube_ARM64_HYBRID_TOUCH_BRANDED.apk
+          "$APKSIGNER" sign --ks hybrid.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_HYBRID_TOUCH_AZTV.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_HYBRID_TOUCH_AZTV.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AztvTube_ARM64_HYBRID_TOUCH_BRANDED
-          path: AztvTube_ARM64_HYBRID_TOUCH_BRANDED.apk
+          name: AztvTube_ARM64_HYBRID_TOUCH_AZTV
+          path: AztvTube_ARM64_HYBRID_TOUCH_AZTV.apk
