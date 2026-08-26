@@ -13,3 +13,4 @@ var CORE='https://cdn.jsdelivr.net/npm/@foxreis/tizentube/dist/userScript.js?v='
 function load(){try{var s=document.createElement('script');s.src=CORE;s.async=false;s.defer=false;s.onload=brandAll;s.onerror=function(){setTimeout(load,1200)};(document.head||document.documentElement).appendChild(s)}catch(e){setTimeout(load,1200)}}
 load();
 })();
+// AztvTube final remote-brand build trigger
