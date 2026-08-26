@@ -34,17 +34,31 @@
     return-void
 .end method
 
-.method private seek30(I)V
+.method private cancelWebTouch(Landroid/view/MotionEvent;)V
     .locals 2
-    const/4 v0, 0x0
-:loop
-    const/4 v1, 0x3
-    if-ge v0, v1, :done
-    invoke-direct {p0, p1}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
-    add-int/lit8 v0, v0, 0x1
-    goto :loop
+    invoke-direct {p0}, Ldev/cobalt/shell/ContentViewRenderView;->getEventForwarder()Lorg/chromium/ui/base/EventForwarder;
+    move-result-object v0
+    if-eqz v0, :done
+    invoke-static {p1}, Landroid/view/MotionEvent;->obtain(Landroid/view/MotionEvent;)Landroid/view/MotionEvent;
+    move-result-object v1
+    const/4 p1, 0x3
+    invoke-virtual {v1, p1}, Landroid/view/MotionEvent;->setAction(I)V
+    invoke-virtual {v0, v1}, Lorg/chromium/ui/base/EventForwarder;->onTouchEvent(Landroid/view/MotionEvent;)Z
+    invoke-virtual {v1}, Landroid/view/MotionEvent;->recycle()V
 :done
     return-void
+.end method
+
+.method public performLongClick()Z
+    .locals 1
+    const/4 v0, 0x0
+    return v0
+.end method
+
+.method public performLongClick(FF)Z
+    .locals 1
+    const/4 v0, 0x0
+    return v0
 .end method
 
 .method public onTouchEvent(Landroid/view/MotionEvent;)Z
@@ -60,8 +74,8 @@
     iput v1, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchStartY:F
     const/4 v1, 0x0
     iput-boolean v1, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchMoved:Z
-    const/4 v0, 0x1
-    return v0
+    goto :forward
+
 :check_move
     const/4 v1, 0x2
     if-ne v0, v1, :check_up
@@ -87,21 +101,21 @@
     if-gez v0, :nav
     cmpl-float v0, v7, v1
     if-gez v0, :nav
-    const/4 v0, 0x1
-    return v0
+    goto :forward
 :nav
     const/4 v0, 0x1
     iput-boolean v0, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchMoved:Z
+    invoke-direct {p0, p1}, Ldev/cobalt/shell/ContentViewRenderView;->cancelWebTouch(Landroid/view/MotionEvent;)V
     cmpl-float v0, v7, v6
     if-lez v0, :horizontal
     const/4 v0, 0x0
     cmpg-float v0, v5, v0
-    if-gez v0, :down
+    if-gez v0, :finger_down
     const/16 v0, 0x14
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
-:down
+:finger_down
     const/16 v0, 0x13
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
@@ -109,24 +123,36 @@
 :horizontal
     const/4 v0, 0x0
     cmpg-float v0, v4, v0
-    if-gez v0, :right
+    if-gez v0, :finger_right
     const/16 v0, 0x16
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
-:right
+:finger_right
     const/16 v0, 0x15
     invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
     const/4 v0, 0x1
     return v0
+
 :check_up
     const/4 v1, 0x1
-    if-ne v0, v1, :consume
+    if-ne v0, v1, :forward
     iget-boolean v1, p0, Ldev/cobalt/shell/ContentViewRenderView;->mAztvTouchMoved:Z
     if-nez v1, :consume
-    const/16 v0, 0x17
-    invoke-direct {p0, v0}, Ldev/cobalt/shell/ContentViewRenderView;->sendDpad(I)V
+    goto :forward
 :consume
     const/4 v0, 0x1
+    return v0
+
+:forward
+    invoke-direct {p0}, Ldev/cobalt/shell/ContentViewRenderView;->getEventForwarder()Lorg/chromium/ui/base/EventForwarder;
+    move-result-object v0
+    if-eqz v0, :call_super
+    invoke-virtual {v0, p1}, Lorg/chromium/ui/base/EventForwarder;->onTouchEvent(Landroid/view/MotionEvent;)Z
+    move-result v0
+    return v0
+:call_super
+    invoke-super {p0, p1}, Landroid/widget/FrameLayout;->onTouchEvent(Landroid/view/MotionEvent;)Z
+    move-result v0
     return v0
 .end method
