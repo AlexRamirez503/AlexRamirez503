@@ -60,7 +60,6 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           changed=[]
           exts={'.xml','.smali','.json','.js','.html','.txt','.properties'}
           for p in Path('decoded').rglob('*'):
@@ -72,29 +71,25 @@ jobs:
                   p.write_text(ns,encoding='utf-8'); changed.append(str(p))
           print('Brand files changed:',len(changed))
           PY
-      - name: Route remote UI script through AztvTube wrapper
+      - name: Patch native remote UI endpoint
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
-          wrapper='https://raw.githubusercontent.com/AlexRamirez503/AlexRamirez503/main/t.js'
-          pats=[
-            re.compile(r'https://[^"\s]+(?:tizentube|TizenTube)[^"\s]*userScript\.js[^"\s]*',re.I),
-            re.compile(r'https://cdn\.jsdelivr\.net/npm/@foxreis/tizentube/dist/userScript\.js[^"\s]*',re.I)
-          ]
-          hits=[]
-          for p in Path('decoded').rglob('*'):
-              if not p.is_file() or p.suffix.lower() not in {'.smali','.xml','.json','.js','.txt','.properties'}: continue
-              try:s=p.read_text(encoding='utf-8')
-              except:continue
-              ns=s
-              for pat in pats: ns,n=pat.subn(wrapper,ns); hits += [str(p)]*n
-              if ns!=s: p.write_text(ns,encoding='utf-8')
-          print('Remote UI endpoint replacements:',len(hits))
-          for h in sorted(set(hits)): print(h)
-          if not hits:
-              print('No direct userscript URL found; leaving technical loading path intact.')
+          p=Path('decoded/lib/arm64-v8a/libchrobalt.so')
+          b=p.read_bytes()
+          old=b'https://cdn.jsdelivr.net/npm/@foxreis/tizentube/dist/userScript.js?v='
+          new=b'https://cdn.jsdelivr.net/gh/AlexRamirez503/AlexRamirez503/t.js?v='
+          if len(new)>len(old): raise SystemExit('Replacement URL too long')
+          count=b.count(old)
+          print('Native userscript URL occurrences:',count)
+          if count != 1: raise SystemExit('Expected exactly one userscript URL')
+          repl=new + (b'\x00'*(len(old)-len(new)))
+          b=b.replace(old,repl,1)
+          p.write_bytes(b)
+          if old in b: raise SystemExit('Original TizenTube userscript URL still present')
+          if new not in b: raise SystemExit('AztvTube wrapper URL missing after patch')
+          print('Native endpoint patched to AztvTube wrapper')
           PY
       - name: Build
         run: java -jar apktool.jar b decoded -o unsigned.apk
