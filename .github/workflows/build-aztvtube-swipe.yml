@@ -40,8 +40,8 @@ jobs:
           p.write_text(s)
           PY
           cat build-assets/touch_patch.smali >> "$FILE"
-      - name: Keep original Cobalt lifecycle and server
-        run: echo 'No lifecycle or server modifications'
+      - name: Keep original Cobalt lifecycle and technical server endpoint
+        run: echo 'Touch, lifecycle, package identifiers and technical server URL unchanged'
       - name: Phone landscape
         shell: bash
         run: |
@@ -56,8 +56,38 @@ jobs:
                   a.set('{%s}resizeableActivity'%ns,'true')
           t.write(p,encoding='utf-8',xml_declaration=True)
           PY
-      - name: Rename visible label
-        run: find decoded/res -type f -name '*.xml' -print0 | xargs -0 sed -i 's/TizenTube/AztvTube/g' || true
+      - name: Rename every visible TizenTube reference
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          changed=[]
+          exts={'.xml','.smali','.json','.js','.html','.txt','.properties','.yml','.yaml'}
+          for p in Path('decoded').rglob('*'):
+              if not p.is_file() or p.suffix.lower() not in exts: continue
+              try: s=p.read_text(encoding='utf-8')
+              except: continue
+              if 'TizenTube' in s:
+                  ns=s.replace('TizenTube','AztvTube')
+                  if ns!=s:
+                      p.write_text(ns,encoding='utf-8'); changed.append(str(p))
+          print('Renamed visible references:',len(changed))
+          for x in changed[:100]: print(x)
+          PY
+      - name: Verify no visible TizenTube literals remain
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          hits=[]
+          for p in Path('decoded').rglob('*'):
+              if not p.is_file(): continue
+              try:s=p.read_text(encoding='utf-8')
+              except:continue
+              if 'TizenTube' in s: hits.append(str(p))
+          print('Remaining capitalized references:',hits)
+          if hits: raise SystemExit(1)
+          PY
       - name: Build
         run: java -jar apktool.jar b decoded -o unsigned.apk
       - name: Align and sign
@@ -67,9 +97,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           keytool -genkeypair -noprompt -keystore hybrid.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
           "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
-          "$APKSIGNER" sign --ks hybrid.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_HYBRID_TOUCH.apk aligned.apk
-          "$APKSIGNER" verify --verbose AztvTube_ARM64_HYBRID_TOUCH.apk
+          "$APKSIGNER" sign --ks hybrid.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_HYBRID_TOUCH_BRANDED.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_HYBRID_TOUCH_BRANDED.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AztvTube_ARM64_HYBRID_TOUCH
-          path: AztvTube_ARM64_HYBRID_TOUCH.apk
+          name: AztvTube_ARM64_HYBRID_TOUCH_BRANDED
+          path: AztvTube_ARM64_HYBRID_TOUCH_BRANDED.apk
