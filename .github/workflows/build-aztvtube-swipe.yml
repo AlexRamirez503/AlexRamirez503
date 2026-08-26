@@ -4,7 +4,6 @@ on:
     paths:
       - '.github/workflows/build-aztvtube-swipe.yml'
       - 'build-assets/touch_patch.smali'
-      - 't.js'
   workflow_dispatch:
 permissions:
   contents: read
@@ -55,42 +54,21 @@ jobs:
                   a.set('{%s}resizeableActivity'%ns,'true')
           t.write(p,encoding='utf-8',xml_declaration=True)
           PY
-      - name: Rename packaged visible branding
+      - name: Rename packaged visible branding only
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          changed=[]
           exts={'.xml','.smali','.json','.js','.html','.txt','.properties'}
           for p in Path('decoded').rglob('*'):
               if not p.is_file() or p.suffix.lower() not in exts: continue
               try:s=p.read_text(encoding='utf-8')
               except:continue
               ns=s.replace('TizenTube','AztvTube')
-              if ns!=s:
-                  p.write_text(ns,encoding='utf-8'); changed.append(str(p))
-          print('Brand files changed:',len(changed))
+              if ns!=s:p.write_text(ns,encoding='utf-8')
           PY
-      - name: Patch native remote UI endpoint
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('decoded/lib/arm64-v8a/libchrobalt.so')
-          b=p.read_bytes()
-          old=b'https://cdn.jsdelivr.net/npm/@foxreis/tizentube/dist/userScript.js?v='
-          new=b'https://cdn.jsdelivr.net/gh/AlexRamirez503/AlexRamirez503/t.js?v='
-          if len(new)>len(old): raise SystemExit('Replacement URL too long')
-          count=b.count(old)
-          print('Native userscript URL occurrences:',count)
-          if count != 1: raise SystemExit('Expected exactly one userscript URL')
-          repl=new + (b'\x00'*(len(old)-len(new)))
-          b=b.replace(old,repl,1)
-          p.write_bytes(b)
-          if old in b: raise SystemExit('Original TizenTube userscript URL still present')
-          if new not in b: raise SystemExit('AztvTube wrapper URL missing after patch')
-          print('Native endpoint patched to AztvTube wrapper')
-          PY
+      - name: Keep original remote UI endpoint
+        run: echo 'Original working remote UI endpoint preserved; no wrapper injection'
       - name: Build
         run: java -jar apktool.jar b decoded -o unsigned.apk
       - name: Align and sign
@@ -100,9 +78,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           keytool -genkeypair -noprompt -keystore hybrid.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
           "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
-          "$APKSIGNER" sign --ks hybrid.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_HYBRID_TOUCH_AZTV.apk aligned.apk
-          "$APKSIGNER" verify --verbose AztvTube_ARM64_HYBRID_TOUCH_AZTV.apk
+          "$APKSIGNER" sign --ks hybrid.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_HYBRID_TOUCH_REPAIRED.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_HYBRID_TOUCH_REPAIRED.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AztvTube_ARM64_HYBRID_TOUCH_AZTV
-          path: AztvTube_ARM64_HYBRID_TOUCH_AZTV.apk
+          name: AztvTube_ARM64_HYBRID_TOUCH_REPAIRED
+          path: AztvTube_ARM64_HYBRID_TOUCH_REPAIRED.apk
