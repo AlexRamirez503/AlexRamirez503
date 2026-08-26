@@ -63,6 +63,14 @@
 
 .method public onTouchEvent(Landroid/view/MotionEvent;)Z
     .locals 8
+    invoke-virtual {p1}, Landroid/view/MotionEvent;->getPointerCount()I
+    move-result v1
+    const/4 v2, 0x1
+    if-le v1, v2, :single_touch
+    invoke-direct {p0, p1}, Ldev/cobalt/shell/ContentViewRenderView;->cancelWebTouch(Landroid/view/MotionEvent;)V
+    const/4 v0, 0x1
+    return v0
+:single_touch
     invoke-virtual {p1}, Landroid/view/MotionEvent;->getActionMasked()I
     move-result v0
     if-nez v0, :check_move
