@@ -49,6 +49,10 @@
     invoke-direct {v0, p0}, Ldev/cobalt/shell/AztvIntroActivity$1;-><init>(Ldev/cobalt/shell/AztvIntroActivity;)V
     iget-object v1, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
     invoke-virtual {v1, v0}, Landroid/widget/VideoView;->setOnCompletionListener(Landroid/media/MediaPlayer$OnCompletionListener;)V
+    new-instance v0, Ldev/cobalt/shell/AztvIntroActivity$2;
+    invoke-direct {v0, p0}, Ldev/cobalt/shell/AztvIntroActivity$2;-><init>(Ldev/cobalt/shell/AztvIntroActivity;)V
+    iget-object v1, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
+    invoke-virtual {v1, v0}, Landroid/widget/VideoView;->setOnErrorListener(Landroid/media/MediaPlayer$OnErrorListener;)V
     iget-object v0, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
     invoke-virtual {v0}, Landroid/widget/VideoView;->start()V
     return-void
