@@ -13,30 +13,24 @@
 .method protected onCreate(Landroid/os/Bundle;)V
     .locals 6
     invoke-super {p0, p1}, Landroid/app/Activity;->onCreate(Landroid/os/Bundle;)V
-
     invoke-virtual {p0}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
     move-result-object v0
     const/16 v1, 0x400
     invoke-virtual {v0, v1, v1}, Landroid/view/Window;->setFlags(II)V
-
     new-instance v0, Landroid/widget/FrameLayout;
     invoke-direct {v0, p0}, Landroid/widget/FrameLayout;-><init>(Landroid/content/Context;)V
     const/high16 v1, -0x1000000
     invoke-virtual {v0, v1}, Landroid/widget/FrameLayout;->setBackgroundColor(I)V
-
     new-instance v1, Landroid/widget/VideoView;
     invoke-direct {v1, p0}, Landroid/widget/VideoView;-><init>(Landroid/content/Context;)V
     iput-object v1, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
-
     new-instance v2, Landroid/widget/FrameLayout$LayoutParams;
     const/4 v3, -0x1
     invoke-direct {v2, v3, v3}, Landroid/widget/FrameLayout$LayoutParams;-><init>(II)V
     const/16 v3, 0x11
     iput v3, v2, Landroid/widget/FrameLayout$LayoutParams;->gravity:I
     invoke-virtual {v0, v1, v2}, Landroid/widget/FrameLayout;->addView(Landroid/view/View;Landroid/view/ViewGroup$LayoutParams;)V
-
     invoke-virtual {p0, v0}, Landroid/app/Activity;->setContentView(Landroid/view/View;)V
-
     invoke-virtual {p0}, Landroid/app/Activity;->getResources()Landroid/content/res/Resources;
     move-result-object v0
     const-string v1, "intro"
@@ -45,7 +39,6 @@
     move-result-object v3
     invoke-virtual {v0, v1, v2, v3}, Landroid/content/res/Resources;->getIdentifier(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)I
     move-result v0
-
     new-instance v1, Ljava/lang/StringBuilder;
     invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
     const-string v2, "android.resource://"
@@ -60,20 +53,16 @@
     move-result-object v0
     invoke-static {v0}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
     move-result-object v0
-
     iget-object v1, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
     invoke-virtual {v1, v0}, Landroid/widget/VideoView;->setVideoURI(Landroid/net/Uri;)V
-
     new-instance v0, Ldev/cobalt/shell/AztvIntroActivity$1;
     invoke-direct {v0, p0}, Ldev/cobalt/shell/AztvIntroActivity$1;-><init>(Ldev/cobalt/shell/AztvIntroActivity;)V
     iget-object v1, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
     invoke-virtual {v1, v0}, Landroid/widget/VideoView;->setOnCompletionListener(Landroid/media/MediaPlayer$OnCompletionListener;)V
-
     new-instance v0, Ldev/cobalt/shell/AztvIntroActivity$2;
     invoke-direct {v0, p0}, Ldev/cobalt/shell/AztvIntroActivity$2;-><init>(Ldev/cobalt/shell/AztvIntroActivity;)V
     iget-object v1, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
     invoke-virtual {v1, v0}, Landroid/widget/VideoView;->setOnErrorListener(Landroid/media/MediaPlayer$OnErrorListener;)V
-
     iget-object v0, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
     invoke-virtual {v0}, Landroid/widget/VideoView;->start()V
     return-void
@@ -85,11 +74,8 @@
     invoke-direct {v0}, Landroid/content/Intent;-><init>()V
     invoke-virtual {p0}, Landroid/app/Activity;->getPackageName()Ljava/lang/String;
     move-result-object v1
-    const-string v2, "__TARGET__"
+    const-string v2, "dev.cobalt.shell.AztvLoginActivity"
     invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->setClassName(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
-    const-string v1, "aztv_skip_intro"
-    const/4 v2, 0x1
-    invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
     invoke-virtual {p0, v0}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
     invoke-virtual {p0}, Landroid/app/Activity;->finish()V
     return-void
