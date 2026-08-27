@@ -62,6 +62,9 @@
     move-result-object v1
     const-string v2, "__TARGET__"
     invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->setClassName(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
+    const-string v1, "aztv_skip_intro"
+    const/4 v2, 0x1
+    invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Z)Landroid/content/Intent;
     invoke-virtual {p0, v0}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
     invoke-virtual {p0}, Landroid/app/Activity;->finish()V
     return-void
