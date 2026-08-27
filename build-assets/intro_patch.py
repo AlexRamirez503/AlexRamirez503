@@ -30,13 +30,21 @@ intro=ET.SubElement(app,'activity',{
     '{%s}screenOrientation'%ns:'sensorLandscape',
     '{%s}theme'%ns:'@android:style/Theme.Black.NoTitleBar.Fullscreen'})
 intro.append(main_filter)
+
+ET.SubElement(app,'activity',{
+    '{%s}name'%ns:'dev.cobalt.shell.AztvLoginActivity',
+    '{%s}exported'%ns:'false',
+    '{%s}screenOrientation'%ns:'sensorLandscape',
+    '{%s}theme'%ns:'@android:style/Theme.Black.NoTitleBar.Fullscreen'})
+
 t.write(p,encoding='utf-8',xml_declaration=True)
 
-sm=Path('build-assets/AztvIntroActivity.smali').read_text().replace('__TARGET__',target)
 out=Path('decoded/smali/dev/cobalt/shell'); out.mkdir(parents=True,exist_ok=True)
-(out/'AztvIntroActivity.smali').write_text(sm)
+(out/'AztvIntroActivity.smali').write_text(Path('build-assets/AztvIntroActivity.smali').read_text())
 (out/'AztvIntroActivity$1.smali').write_text(Path('build-assets/AztvIntroActivity$1.smali').read_text())
 (out/'AztvIntroActivity$2.smali').write_text(Path('build-assets/AztvIntroActivity$2.smali').read_text())
+login=Path('build-assets/AztvLoginActivity.smali').read_text().replace('__TARGET__',target)
+(out/'AztvLoginActivity.smali').write_text(login)
 
 raw=Path('decoded/res/raw'); raw.mkdir(parents=True,exist_ok=True)
 (raw/'intro.mp4').write_bytes(b'placeholder')
@@ -77,4 +85,4 @@ if 'aztv_skip_intro' not in chunk:
     s = s[:start] + chunk + s[end:]
     target_path.write_text(s)
 
-print('Intro forced before ->',target,'at',target_path)
+print('Intro -> Login ->',target)
