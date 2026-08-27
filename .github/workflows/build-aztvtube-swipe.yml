@@ -4,6 +4,9 @@ on:
     paths:
       - '.github/workflows/build-aztvtube-swipe.yml'
       - 'build-assets/touch_patch.smali'
+      - 'build-assets/intro_patch.py'
+      - 'build-assets/AztvIntroActivity.smali'
+      - 'build-assets/AztvIntroActivity$1.smali'
   workflow_dispatch:
 permissions:
   contents: read
@@ -54,19 +57,8 @@ jobs:
                   a.set('{%s}resizeableActivity'%ns,'true')
           t.write(p,encoding='utf-8',xml_declaration=True)
           PY
-      - name: Rename packaged visible branding only
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          exts={'.xml','.smali','.json','.js','.html','.txt','.properties'}
-          for p in Path('decoded').rglob('*'):
-              if not p.is_file() or p.suffix.lower() not in exts: continue
-              try:s=p.read_text(encoding='utf-8')
-              except:continue
-              ns=s.replace('TizenTube','AztvTube')
-              if ns!=s:p.write_text(ns,encoding='utf-8')
-          PY
+      - name: Add intro launcher
+        run: python3 build-assets/intro_patch.py
       - name: Keep original remote UI endpoint
         run: echo 'Original working remote UI endpoint preserved; no wrapper injection'
       - name: Build
@@ -78,9 +70,9 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           keytool -genkeypair -noprompt -keystore hybrid.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
           "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
-          "$APKSIGNER" sign --ks hybrid.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_HYBRID_TOUCH_REPAIRED.apk aligned.apk
-          "$APKSIGNER" verify --verbose AztvTube_ARM64_HYBRID_TOUCH_REPAIRED.apk
+          "$APKSIGNER" sign --ks hybrid.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_INTRO_PLACEHOLDER.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_INTRO_PLACEHOLDER.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: AztvTube_ARM64_HYBRID_TOUCH_REPAIRED
-          path: AztvTube_ARM64_HYBRID_TOUCH_REPAIRED.apk
+          name: AztvTube_ARM64_INTRO_PLACEHOLDER
+          path: AztvTube_ARM64_INTRO_PLACEHOLDER.apk
