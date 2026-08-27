@@ -80,3 +80,7 @@ jobs:
         with:
           name: AztvTube_ARM64_INTRO_PLACEHOLDER
           path: AztvTube_ARM64_INTRO_PLACEHOLDER.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apktool-jar
+          path: apktool.jar
