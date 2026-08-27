@@ -38,7 +38,7 @@
     invoke-direct {v3, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V
     const-string v4, "AztvTube"
     invoke-virtual {v3, v4}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
-    const/high16 v4, 0x41e00000    # 28.0f
+    const/high16 v4, 0x41e00000
     invoke-virtual {v3, v4}, Landroid/widget/TextView;->setTextSize(F)V
     const/4 v4, -0x1
     invoke-virtual {v3, v4}, Landroid/widget/TextView;->setTextColor(I)V
@@ -50,7 +50,7 @@
     invoke-direct {v3, p0}, Landroid/widget/TextView;-><init>(Landroid/content/Context;)V
     const-string v5, "Iniciar sesión"
     invoke-virtual {v3, v5}, Landroid/widget/TextView;->setText(Ljava/lang/CharSequence;)V
-    const/high16 v5, 0x41800000    # 16.0f
+    const/high16 v5, 0x41800000
     invoke-virtual {v3, v5}, Landroid/widget/TextView;->setTextSize(F)V
     invoke-virtual {v3, v4}, Landroid/widget/TextView;->setTextColor(I)V
     const/16 v5, 0x11
@@ -128,9 +128,6 @@
     invoke-virtual {v1}, Ljava/lang/String;->length()I
     move-result v2
     if-eqz v2, :invalid
-
-    invoke-virtual {p0}, Landroid/app/Activity;->getSharedPreferences(Ljava/lang/String;I)Landroid/content/SharedPreferences;
-    move-result-object v2
     goto :open
 
 :invalid
