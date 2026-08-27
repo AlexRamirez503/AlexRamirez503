@@ -36,6 +36,7 @@ sm=Path('build-assets/AztvIntroActivity.smali').read_text().replace('__TARGET__'
 out=Path('decoded/smali/dev/cobalt/shell'); out.mkdir(parents=True,exist_ok=True)
 (out/'AztvIntroActivity.smali').write_text(sm)
 (out/'AztvIntroActivity$1.smali').write_text(Path('build-assets/AztvIntroActivity$1.smali').read_text())
+(out/'AztvIntroActivity$2.smali').write_text(Path('build-assets/AztvIntroActivity$2.smali').read_text())
 
 raw=Path('decoded/res/raw'); raw.mkdir(parents=True,exist_ok=True)
 (raw/'intro.mp4').write_bytes(b'placeholder')
