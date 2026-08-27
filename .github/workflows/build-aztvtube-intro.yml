@@ -1,0 +1,185 @@
+name: Build AztvTube ARM64 Intro
+on:
+  push:
+    paths:
+      - '.github/workflows/build-aztvtube-intro.yml'
+      - 'build-assets/touch_patch.smali'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download base
+        run: |
+          curl -L --fail -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.11.1/apktool_2.11.1.jar
+          curl -L --fail -o cobalt-arm64.apk https://github.com/reisxd/TizenTubeCobalt/releases/download/v2.0.2/cobalt-arm64.apk
+      - name: Decode
+        run: java -jar apktool.jar d -f cobalt-arm64.apk -o decoded
+      - name: Preserve working touch
+        shell: bash
+        run: |
+          FILE=$(find decoded -type f -path '*dev/cobalt/shell/ContentViewRenderView.smali' | head -1)
+          test -n "$FILE"
+          python3 - "$FILE" <<'PY'
+          from pathlib import Path
+          import sys
+          p=Path(sys.argv[1]); s=p.read_text()
+          fields='\n.field private mAztvTouchStartX:F\n.field private mAztvTouchStartY:F\n.field private mAztvTouchMoved:Z\n.field private mAztvLastTapTime:J\n'
+          if 'mAztvTouchStartX:F' not in s:
+              pos=s.find('\n.method ')
+              if pos < 0: raise SystemExit('No method marker')
+              s=s[:pos]+fields+s[pos:]
+          p.write_text(s)
+          PY
+          cat build-assets/touch_patch.smali >> "$FILE"
+      - name: Add real intro launcher
+        shell: bash
+        run: |
+          mkdir -p decoded/res/raw decoded/smali/dev/cobalt/shell
+          printf 'placeholder' > decoded/res/raw/intro.mp4
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          ns='http://schemas.android.com/apk/res/android'
+          ET.register_namespace('android',ns)
+          p=Path('decoded/AndroidManifest.xml')
+          t=ET.parse(p); root=t.getroot(); app=root.find('application')
+          main_filter=None; main_owner=None; target=None
+          for tag in ('activity','activity-alias'):
+              for a in app.findall(tag):
+                  for f in list(a.findall('intent-filter')):
+                      acts=[x.get('{%s}name'%ns) for x in f.findall('action')]
+                      cats=[x.get('{%s}name'%ns) for x in f.findall('category')]
+                      if 'android.intent.action.MAIN' in acts and 'android.intent.category.LAUNCHER' in cats:
+                          main_filter=f; main_owner=a
+                          if tag=='activity-alias':
+                              target=a.get('{%s}targetActivity'%ns)
+                          else:
+                              target=a.get('{%s}name'%ns)
+                          a.remove(f)
+                          break
+                  if main_filter is not None: break
+              if main_filter is not None: break
+          if not target: raise SystemExit('No launcher target found')
+          pkg=root.get('package','')
+          if target.startswith('.'):
+              target=pkg+target
+          elif '.' not in target:
+              target=pkg+'.'+target
+          intro=ET.SubElement(app,'activity',{
+              '{%s}name'%ns:'dev.cobalt.shell.AztvIntroActivity',
+              '{%s}exported'%ns:'true',
+              '{%s}screenOrientation'%ns:'sensorLandscape',
+              '{%s}theme'%ns:'@android:style/Theme.Black.NoTitleBar.Fullscreen'
+          })
+          intro.append(main_filter)
+          for a in app.findall('activity'):
+              n=a.get('{%s}name'%ns,'')
+              if 'MainActivity' in n or 'CobaltActivity' in n or n==target:
+                  a.set('{%s}screenOrientation'%ns,'sensorLandscape')
+                  a.set('{%s}resizeableActivity'%ns,'true')
+          t.write(p,encoding='utf-8',xml_declaration=True)
+          smali=f'''.class public Ldev/cobalt/shell/AztvIntroActivity;
+.super Landroid/app/Activity;
+.source "AztvIntroActivity.java"
+
+.field private mVideo:Landroid/widget/VideoView;
+
+.method public constructor <init>()V
+    .locals 0
+    invoke-direct {{p0}}, Landroid/app/Activity;-><init>()V
+    return-void
+.end method
+
+.method protected onCreate(Landroid/os/Bundle;)V
+    .locals 6
+    invoke-super {{p0, p1}}, Landroid/app/Activity;->onCreate(Landroid/os/Bundle;)V
+    invoke-virtual {{p0}}, Landroid/app/Activity;->getWindow()Landroid/view/Window;
+    move-result-object v0
+    const/16 v1, 0x400
+    invoke-virtual {{v0, v1, v1}}, Landroid/view/Window;->setFlags(II)V
+    new-instance v0, Landroid/widget/VideoView;
+    invoke-direct {{v0, p0}}, Landroid/widget/VideoView;-><init>(Landroid/content/Context;)V
+    iput-object v0, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
+    new-instance v1, Landroid/widget/FrameLayout$LayoutParams;
+    const/4 v2, -0x1
+    invoke-direct {{v1, v2, v2}}, Landroid/widget/FrameLayout$LayoutParams;-><init>(II)V
+    invoke-virtual {{v0, v1}}, Landroid/widget/VideoView;->setLayoutParams(Landroid/view/ViewGroup$LayoutParams;)V
+    iget-object v0, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
+    invoke-virtual {{p0, v0}}, Landroid/app/Activity;->setContentView(Landroid/view/View;)V
+    invoke-virtual {{p0}}, Landroid/app/Activity;->getResources()Landroid/content/res/Resources;
+    move-result-object v0
+    const-string v1, "intro"
+    const-string v2, "raw"
+    invoke-virtual {{p0}}, Landroid/app/Activity;->getPackageName()Ljava/lang/String;
+    move-result-object v3
+    invoke-virtual {{v0, v1, v2, v3}}, Landroid/content/res/Resources;->getIdentifier(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)I
+    move-result v0
+    new-instance v1, Ljava/lang/StringBuilder;
+    invoke-direct {{v1}}, Ljava/lang/StringBuilder;-><init>()V
+    const-string v2, "android.resource://"
+    invoke-virtual {{v1, v2}}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {{p0}}, Landroid/app/Activity;->getPackageName()Ljava/lang/String;
+    move-result-object v2
+    invoke-virtual {{v1, v2}}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v2, "/"
+    invoke-virtual {{v1, v2}}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {{v1, v0}}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    invoke-virtual {{v1}}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v0
+    invoke-static {{v0}}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
+    move-result-object v0
+    iget-object v1, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
+    invoke-virtual {{v1, v0}}, Landroid/widget/VideoView;->setVideoURI(Landroid/net/Uri;)V
+    new-instance v0, Ldev/cobalt/shell/AztvIntroActivity$1;
+    invoke-direct {{v0, p0}}, Ldev/cobalt/shell/AztvIntroActivity$1;-><init>(Ldev/cobalt/shell/AztvIntroActivity;)V
+    iget-object v1, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
+    invoke-virtual {{v1, v0}}, Landroid/widget/VideoView;->setOnCompletionListener(Landroid/media/MediaPlayer$OnCompletionListener;)V
+    iget-object v0, p0, Ldev/cobalt/shell/AztvIntroActivity;->mVideo:Landroid/widget/VideoView;
+    invoke-virtual {{v0}}, Landroid/widget/VideoView;->start()V
+    return-void
+.end method
+
+.method public openMain()V
+    .locals 3
+    new-instance v0, Landroid/content/Intent;
+    invoke-direct {{v0}}, Landroid/content/Intent;-><init>()V
+    invoke-virtual {{p0}}, Landroid/app/Activity;->getPackageName()Ljava/lang/String;
+    move-result-object v1
+    const-string v2, "{target}"
+    invoke-virtual {{v0, v1, v2}}, Landroid/content/Intent;->setClassName(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
+    invoke-virtual {{p0, v0}}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
+    invoke-virtual {{p0}}, Landroid/app/Activity;->finish()V
+    return-void
+.end method
+'''
+          Path('decoded/smali/dev/cobalt/shell/AztvIntroActivity.smali').write_text(smali)
+          inner='''.class final Ldev/cobalt/shell/AztvIntroActivity$1;\n.super Ljava/lang/Object;\n.implements Landroid/media/MediaPlayer$OnCompletionListener;\n.field final synthetic this$0:Ldev/cobalt/shell/AztvIntroActivity;\n.method constructor <init>(Ldev/cobalt/shell/AztvIntroActivity;)V\n    .locals 0\n    iput-object p1, p0, Ldev/cobalt/shell/AztvIntroActivity$1;->this$0:Ldev/cobalt/shell/AztvIntroActivity;\n    invoke-direct {p0}, Ljava/lang/Object;-><init>()V\n    return-void\n.end method\n.method public onCompletion(Landroid/media/MediaPlayer;)V\n    .locals 1\n    iget-object v0, p0, Ldev/cobalt/shell/AztvIntroActivity$1;->this$0:Ldev/cobalt/shell/AztvIntroActivity;\n    invoke-virtual {v0}, Ldev/cobalt/shell/AztvIntroActivity;->openMain()V\n    return-void\n.end method\n'''
+          Path('decoded/smali/dev/cobalt/shell/AztvIntroActivity$1.smali').write_text(inner)
+          print('Original launcher:',target)
+          PY
+      - name: Keep original remote UI endpoint
+        run: echo 'Original working remote UI endpoint preserved'
+      - name: Build
+        run: java -jar apktool.jar b decoded -o unsigned.apk
+      - name: Align and sign
+        shell: bash
+        run: |
+          ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          keytool -genkeypair -noprompt -keystore intro.jks -storepass AztvTube2026 -keypass AztvTube2026 -alias aztvtube -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=AztvTube,OU=Android,O=AztvTube,L=Reno,ST=Nevada,C=US'
+          "$ZIPALIGN" -f -p 4 unsigned.apk aligned.apk
+          "$APKSIGNER" sign --ks intro.jks --ks-pass pass:AztvTube2026 --key-pass pass:AztvTube2026 --out AztvTube_ARM64_INTRO_PLACEHOLDER.apk aligned.apk
+          "$APKSIGNER" verify --verbose AztvTube_ARM64_INTRO_PLACEHOLDER.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AztvTube_ARM64_INTRO_PLACEHOLDER
+          path: AztvTube_ARM64_INTRO_PLACEHOLDER.apk
