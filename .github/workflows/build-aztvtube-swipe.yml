@@ -5,8 +5,10 @@ on:
       - '.github/workflows/build-aztvtube-swipe.yml'
       - 'build-assets/touch_patch.smali'
       - 'build-assets/intro_patch.py'
+      - 'build-assets/login_style_patch.py'
       - 'build-assets/AztvIntroActivity.smali'
       - 'build-assets/AztvIntroActivity$1.smali'
+      - 'build-assets/AztvLoginActivity.smali'
   workflow_dispatch:
 permissions:
   contents: read
@@ -57,8 +59,10 @@ jobs:
                   a.set('{%s}resizeableActivity'%ns,'true')
           t.write(p,encoding='utf-8',xml_declaration=True)
           PY
-      - name: Add intro launcher
+      - name: Add intro and login
         run: python3 build-assets/intro_patch.py
+      - name: Style login like original
+        run: python3 build-assets/login_style_patch.py
       - name: Keep original remote UI endpoint
         run: echo 'Original working remote UI endpoint preserved; no wrapper injection'
       - name: Build
